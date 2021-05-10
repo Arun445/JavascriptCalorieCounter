@@ -1,5 +1,53 @@
 //--------------------------------------------Storage controler--------------------------------------------
-
+const StorageCtrl = (function () {
+  return {
+    storeItem: function (item) {
+      let items;
+      if (localStorage.getItem("items") === null) {
+        items = [];
+        items.push(item);
+        localStorage.setItem("items", JSON.stringify(items));
+      } else {
+        items = JSON.parse(localStorage.getItem("items"));
+        items.push(item);
+        localStorage.setItem("items", JSON.stringify(items));
+      }
+    },
+    getStorageItems: function () {
+      let items;
+      if (localStorage.getItem("items") === null) {
+        items = [];
+      } else {
+        items = JSON.parse(localStorage.getItem("items"));
+      }
+      return items;
+    },
+    updateStorageItem: function (meal, calories) {
+      const currentItem = ItemCtrl.getCurrentItem();
+      const items = StorageCtrl.getStorageItems();
+      items.forEach((item) => {
+        if (item.id === currentItem.id) {
+          item.meal = meal;
+          item.calories = parseInt(calories);
+        }
+      });
+      localStorage.setItem("items", JSON.stringify(items));
+    },
+    deleteStorageItem: function () {
+      const currentItem = ItemCtrl.getCurrentItem();
+      const items = StorageCtrl.getStorageItems();
+      items.forEach((item, index) => {
+        if (currentItem.id === item.id) {
+          items.splice(index, 1);
+        }
+      });
+      localStorage.setItem("items", JSON.stringify(items));
+    },
+    clearallStorageitems: function () {
+      localStorage.removeItem("items");
+    },
+  };
+})();
 //--------------------------------------------Item controler --------------------------------------------
 
 const ItemCtrl = (function () {
@@ -10,11 +58,7 @@ const ItemCtrl = (function () {
     this.calories = calories;
   };
   const data = {
-    items: [
-      { id: 0, meal: "steak", calories: 500 },
-      { id: 1, meal: "cake", calories: 1200 },
-      { id: 4, meal: "pancake", calories: 600 },
-    ],
+    items: StorageCtrl.getStorageItems(),
     currentItem: null,
     totalCalories: 0,
   };
@@ -46,6 +90,7 @@ const ItemCtrl = (function () {
       currentItem.meal = item.item;
       currentItem.calories = parseInt(item.calories);
       data.items.splice(index, 1, currentItem);
+      StorageCtrl.updateStorageItem(item.item, parseInt(item.calories));
     },
     calculateTotalCalories: function () {
       let totalCalories = 0;
@@ -76,6 +121,9 @@ const ItemCtrl = (function () {
           data.items.splice(index, 1);
         }
       });
+    },
+    clearAllItems: function () {
+      data.items = [];
     },
   };
 })();
@@ -164,7 +212,7 @@ const UICtrl = (function () {
 
 //-------------------------------------------- App controler --------------------------------------------
 
-const AppCtrl = (function (ItemCtrl, UICtrl) {
+const AppCtrl = (function (ItemCtrl, StorageCtrl, UICtrl) {
   const loadEventListeners = function () {
     const UISelectors = UICtrl.getSelectors();
 
@@ -207,6 +255,8 @@ const AppCtrl = (function (ItemCtrl, UICtrl) {
       const newItem = ItemCtrl.addItem(meal, calories);
       UICtrl.addListItem(newItem);
       UICtrl.showTotalCalories();
+
+      StorageCtrl.storeItem(newItem);
     }
   };
   const editState = function (e) {
@@ -242,6 +292,7 @@ const AppCtrl = (function (ItemCtrl, UICtrl) {
     e.preventDefault();
   };
   const deleteMeal = function (e) {
+    StorageCtrl.deleteStorageItem();
     //delete the current item you want to edit
     ItemCtrl.deleteCurrentItem();
     //update total calories in UI
@@ -255,7 +306,16 @@ const AppCtrl = (function (ItemCtrl, UICtrl) {
   const returnBack = function () {
     UICtrl.notEditState();
   };
-  const clearAll = function () {};
+  const clearAll = function () {
+    StorageCtrl.clearallStorageitems();
+    ItemCtrl.clearAllItems();
+    //update total calories in UI
+    UICtrl.showTotalCalories();
+    //show all meals UI
+    UICtrl.showItems(ItemCtrl.getItems());
+    // Hides the list
+    UICtrl.hideList();
+  };
   return {
     init: function () {
       const items = ItemCtrl.getItems();
@@ -270,6 +330,6 @@ const AppCtrl = (function (ItemCtrl, UICtrl) {
       loadEventListeners();
     },
   };
-})(ItemCtrl, UICtrl);
+})(ItemCtrl, StorageCtrl, UICtrl);
 
 AppCtrl.init();
